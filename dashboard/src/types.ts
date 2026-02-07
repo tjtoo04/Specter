@@ -17,4 +17,13 @@ export interface Project {
     users?: User[];
 }
 
+export interface Configuration {
+    id: number;
+    context: string;
+    user: User;
+    project: Project;
+}
+
+export type ConfigurationData = Configuration[];
+
 export type ProjectData = Project[];

@@ -1,19 +1,21 @@
-import './Sidebar.css'
-import { AppRegistration, Brightness4, Brightness7, Dashboard, Login, Logout, Menu, Person, PersonAdd, Report, Settings } from "@mui/icons-material";
-import { Box, Button, Divider, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
-import { useHostedPageUrls, useLogoutFunction, useRedirectFunctions, withAuthInfo, type WithAuthInfoProps } from '@propelauth/react';
+import './Sidebar.css';
+import { Dashboard, Login, Logout, Menu, Person, PersonAdd, Report, Settings } from "@mui/icons-material";
+import { Box, Button, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
+import { useLogoutFunction, useRedirectFunctions, withAuthInfo, type WithAuthInfoProps } from '@propelauth/react';
 import { useEffect, useState } from "react";
-import { Link } from 'react-router';
 import { api } from '../lib/api';
+import { useNavigate } from 'react-router';
 
 const Sidebar = withAuthInfo(
     (props: WithAuthInfoProps) => {
         const logoutFunction = useLogoutFunction()
+        let navigate = useNavigate();
+
         const { redirectToLoginPage, redirectToSignupPage, redirectToAccountPage } = useRedirectFunctions()
         const itemList = [
-            { text: 'Project Dashboard', icon: <Dashboard /> },
-            { text: 'Reports', icon: <Report /> },
-            { text: 'Configurations', icon: <Settings /> }
+            { text: 'Project Dashboard', icon: <Dashboard />, url: '/' },
+            { text: 'Reports', icon: <Report />, url: '/reports' },
+            { text: 'Configurations', icon: <Settings />, url: '/configurations' }
         ]
         const [open, setOpen] = useState(false);
 
@@ -27,7 +29,6 @@ const Sidebar = withAuthInfo(
             if (props.accessToken) {
                 client.whoAmI().then(console.log)
             }
-
         }, [])
 
         const DrawerList = (
@@ -40,7 +41,7 @@ const Sidebar = withAuthInfo(
                                 <ListItemIcon>
                                     {item.icon}
                                 </ListItemIcon>
-                                <ListItemButton>
+                                <ListItemButton onClick={() => navigate(item.url)}>
                                     <ListItemText primary={item.text} />
                                 </ListItemButton>
                             </ListItem>

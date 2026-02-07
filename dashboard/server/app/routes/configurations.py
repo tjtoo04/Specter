@@ -1,19 +1,18 @@
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from typing import List
-
-from sqlalchemy.orm import Session
-
-from ..database import get_db
-from ..models.models import Configuration
-from ..schemas.Configuration import (
-    ConfigurationCreate,
-    ConfigurationUpdate,
-    ConfigurationResponse,
-)
+from sqlalchemy.orm import selectinload
 
 from ..auth import auth
+from ..database import get_db
+from ..models.models import Configuration, Project
+from ..schemas.Configuration import (
+    ConfigurationCreate,
+    ConfigurationResponse,
+    ConfigurationUpdate,
+)
 
 router = APIRouter(prefix="/api/configs", tags=["configurations"])
 
@@ -30,11 +29,21 @@ async def create_config(
         user_id=current_user.user_id,
         project_id=project_id,
     )
-
     db.add(new_config)
     await db.commit()
-    await db.refresh(new_config, ["user", "project"])
-    return new_config
+    stmt = (
+        select(Configuration)
+        .where(Configuration.id == new_config.id)
+        .options(
+            selectinload(Configuration.user),
+            selectinload(Configuration.project).selectinload(Project.users),
+        )
+    )
+
+    result = await db.execute(stmt)
+    db_config = result.scalars().first()
+
+    return db_config
 
 
 @router.get("/project/{project_id}", response_model=List[ConfigurationResponse])
@@ -43,12 +52,19 @@ async def get_project_configs(
     current_user=Depends(auth.require_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Configuration).where(
+    stmt = (
+        select(Configuration)
+        .where(
             Configuration.project_id == project_id,
             Configuration.user_id == current_user.user_id,
         )
+        .options(
+            selectinload(Configuration.user),
+            selectinload(Configuration.project).selectinload(Project.users),
+        )
     )
+
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 
@@ -82,11 +98,24 @@ async def update_config(
 
 
 @router.delete("/{config_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_config(config_id: int, db: Session = Depends(get_db)):
-    db_config = db.query(Configuration).filter(Configuration.id == config_id).first()
+async def delete_config(
+    config_id: int,
+    current_user=Depends(auth.require_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Configuration).where(Configuration.id == config_id)
+    )
+    db_config = result.scalars().first()
+
     if not db_config:
         raise HTTPException(status_code=404, detail="Configuration not found")
 
-    db.delete(db_config)
-    db.commit()
+    if db_config.user_id != current_user.user_id:
+        raise HTTPException(
+            status_code=403, detail="Not authorized to delete this config"
+        )
+
+    await db.delete(db_config)
+    await db.commit()
     return None

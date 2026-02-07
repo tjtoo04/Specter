@@ -9,9 +9,10 @@ const fetchWithAuth = async (endpoint: string, options: RequestInit = {}, access
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${accessToken}`,
         },
-    }).then(res => {
+    }).then(async (res) => {
         if (!res.ok) throw new Error(`API Error: ${res.statusText}`);
-        return res.json();
+        const text = await res.text();
+        return text ? JSON.parse(text) : {};
     });
 };
 
@@ -59,6 +60,29 @@ export const api = (accessToken: string) => ({
 
     removeUserFromProject: async (projectId: number, userId: string) =>
         fetchWithAuth(`/api/projects/${projectId}/users/${userId}`, {
+            method: 'DELETE',
+        }, accessToken),
+
+    // Configuration endpoints
+    createConfiguration: async (projectId: number, context: string) =>
+        fetchWithAuth(`/api/configs/${projectId}`, {
+            method: 'POST',
+            body: JSON.stringify({ context }),
+        }, accessToken),
+
+    getProjectConfigurations: async (projectId: number) =>
+        fetchWithAuth(`/api/configs/project/${projectId}`, {
+            method: 'GET',
+        }, accessToken),
+
+    updateConfiguration: async (configId: number, context: string) =>
+        fetchWithAuth(`/api/configs/${configId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ context }),
+        }, accessToken),
+
+    deleteConfiguration: async (configId: number) =>
+        fetchWithAuth(`/api/configs/${configId}`, {
             method: 'DELETE',
         }, accessToken),
 });
