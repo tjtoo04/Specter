@@ -17,7 +17,7 @@ export default defineConfig({
         },
         // ADD THIS SECTION ----------------------------------
         allowedHosts: [
-        'specter-dashboard.duckdns.org',
+        'specterai.duckdns.org',
         'localhost',
         '127.0.0.1'
         ]
