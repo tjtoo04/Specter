@@ -9,7 +9,7 @@ class StateTracker:
         self.screen_enter_time = None      #when did I arrive here?
         self.screen_history = []           #where have i been ?( a list)
         self.attempts_on_screen = 0
-        #self.last_actions = None
+        self.last_actions = None
 
     def update(self,vision_output, action_result):
 
@@ -59,4 +59,4 @@ class StateTracker:
     
     def set_last_action(self, action):
         """Remember what action we just tried."""
-        self.last_action = action.get("action")
+        self.last_actions = action.get("action")

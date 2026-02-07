@@ -1,21 +1,35 @@
-def decide_next_action(vision, state):
-    screen = vision["screen_type"]
+def decide_next_action(test_case, step_index):
+    """
+    Returns the next INTENT only
+    """
 
-    # DEMO 1: Homepage
-    if screen == "home":
-        if "LOGIN" in vision["elements"]:
-            if state["attempts_on_screen"] == 0:
-                return {"action": "scroll_horizontal", "reason": "Reveal nav"}
-            return {"action": "tap", "target": "LOGIN", "reason": "Try login"}
+    flows = {
+        "login": [
+            {"action": "scroll"},
+            {"action": "tap", "target": "LOGIN"},
+            {"action": "tap", "target": "LOGIN"},
+            {"action": "tap", "target": "LOGIN"},
+        ],
 
-    # DEMO 2: Login screen
-    if screen == "login":
-        if state["attempts_on_screen"] < 2:
-            return {"action": "tap", "target": "LOGIN", "reason": "Retry login"}
-        return {"action": "wait", "reason": "Likely friction"}
+        "contact": [
+            {"action": "scroll"},
+            {"action": "tap", "target": "CONTACT_US"},
+            {"action": "type", "target": "NAME", "text": "Luis Infante"},
+            {"action": "type", "target": "EMAIL", "text": "adress@domain.com"},
+            {"action": "type", "target": "SUBJECT", "text": "Inquiry"},
+            {"action": "type", "target": "MESSAGE", "text": "Test message"},
+            {"action": "tap", "target": "SUBMIT"},
+        ],
 
-    # DEMO 3: Error screen
-    if screen == "error":
-        return {"action": "stop", "reason": "Escalate UX issue"}
+        "buy": [
+            {"action": "tap", "target": "NEW_FLAVOURS"},
+            {"action": "tap", "target": "BUY"},
+        ]
+    }
 
-    return {"action": "wait"}
+    flow = flows[test_case]
+
+    if step_index >= len(flow):
+        return None
+
+    return flow[step_index]
