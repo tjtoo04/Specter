@@ -14,6 +14,12 @@ export default defineConfig({
                 changeOrigin: true,
                 secure: false,
             }
-        }
+        },
+        // ADD THIS SECTION ----------------------------------
+        allowedHosts: [
+        'specter-dashboard.duckdns.org',
+        'localhost',
+        '127.0.0.1'
+        ]
     }
 })
