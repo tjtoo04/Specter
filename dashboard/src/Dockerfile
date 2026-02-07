@@ -10,5 +10,6 @@ COPY . .
 
 EXPOSE 5173
 
-# Run vite from the root
-CMD ["npm", "run", "dev"]
+# CRITICAL CHANGE: Add '-- --host' to bind to 0.0.0.0
+# This passes the --host flag to the underlying vite command
+CMD ["npm", "run", "dev", "--", "--host"]

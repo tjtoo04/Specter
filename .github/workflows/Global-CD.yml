@@ -1,0 +1,100 @@
+name: Global CD (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        required: true
+        type: string # 'frontend' or 'backend'
+      image_name:
+        required: true
+        type: string # Full image url
+      container_port:
+        required: true
+        type: string # 80 or 8000
+      host_port:
+        required: true
+        type: string # 3000 or 8000
+    secrets:
+      SSH_HOST:
+        required: true
+      SSH_USER:
+        required: true
+      SSH_KEY:
+        required: true
+      GH_TOKEN:
+        required: true
+
+jobs:
+  deploy-dashboard-vm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # 1. Setup Directory
+            mkdir -p ~/app
+            cd ~/app
+
+            # 2. Login to Registry
+            echo "${{ secrets.GH_TOKEN }}" | tr -d '\n' | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # 3. Update the .env file (This is the Magic Trick)
+            # We use 'touch' to ensure file exists, then grep to see if variable exists.
+            # If it exists, we replace it. If not, we append it.
+            touch .env
+            
+            VAR_NAME="${{ inputs.service_name }}_IMAGE"
+            NEW_VALUE="${{ inputs.image_name }}"
+            
+            if grep -q "$VAR_NAME=" .env; then
+              # Use sed to replace the existing line
+              sed -i "s|$VAR_NAME=.*|$VAR_NAME=$NEW_VALUE|" .env
+            else
+              # Append to end of file
+              echo "$VAR_NAME=$NEW_VALUE" >> .env
+            fi
+
+            echo "Updated .env with $VAR_NAME=$NEW_VALUE"
+
+            # 4. Create/Overwrite the Master docker-compose.yml
+            # We overwrite this every time to ensure the config is always up to date 
+            # with both services defined.
+            # Notice the variables: ${frontend_IMAGE} and ${backend_IMAGE}
+            cat <<EOF > docker-compose.yml
+            services:
+              frontend:
+                # Fallback to 'latest' if variable is missing
+                image: \${frontend_IMAGE:-ghcr.io/${{ github.repository }}/frontend:latest}
+                container_name: frontend_prod
+                restart: always
+                ports:
+                  - "3000:80"
+                networks:
+                  - app_network
+
+              backend:
+                image: \${backend_IMAGE:-ghcr.io/${{ github.repository }}/backend:latest}
+                container_name: backend_prod
+                restart: always
+                ports:
+                  - "8000:8000"
+                networks:
+                  - app_network
+
+            networks:
+              app_network:
+                driver: bridge
+            EOF
+
+            # 5. Pull and Update ONLY the specific service
+            # Docker Compose will read the .env file automatically
+            docker compose pull ${{ inputs.service_name }}
+            docker compose up -d ${{ inputs.service_name }}
+
+            # 6. Cleanup
+            docker image prune -f
