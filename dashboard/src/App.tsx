@@ -9,8 +9,6 @@ import { ColorModeContext } from './context/ColorModeContext';
 import { Brightness7, Brightness4 } from '@mui/icons-material';
 import { configs } from './utils/config';
 
-const noSidebarLocation = ['/login', '/register']
-
 function App() {
     const [mode, setMode] = useState<PaletteMode>(() => {
         const savedMode = localStorage.getItem('themeMode');
@@ -49,14 +47,14 @@ function App() {
                     <CssBaseline />
                     <div className='app-container' >
                         <nav className='top-nav-bar'>
-                            {!noSidebarLocation.find(loc => loc === location.pathname) &&
-                                <>
-                                    <Sidebar />
-                                    <IconButton className='theme-toggle' onClick={colorMode.toggleColorMode} color="inherit">
-                                        {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
-                                    </IconButton>
-                                </>
-                            }
+                            {/* {!noSidebarLocation.find(loc => loc === location.pathname) && */}
+                            {/*     <> */}
+                            <Sidebar />
+                            <IconButton className='theme-toggle' onClick={colorMode.toggleColorMode} color="inherit">
+                                {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+                            </IconButton>
+                            {/*     </> */}
+                            {/* } */}
                         </nav>
                         <Outlet />
                     </div>

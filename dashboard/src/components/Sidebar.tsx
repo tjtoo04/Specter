@@ -1,15 +1,20 @@
 import './Sidebar.css'
-import { Brightness4, Brightness7, Dashboard, Login, Menu, Report, Settings } from "@mui/icons-material";
+import { AppRegistration, Brightness4, Brightness7, Dashboard, Login, Logout, Menu, Person, PersonAdd, Report, Settings } from "@mui/icons-material";
 import { Box, Button, Divider, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
-import { useLogoutFunction, useRedirectFunctions, withAuthInfo, type WithAuthInfoProps } from '@propelauth/react';
+import { useHostedPageUrls, useLogoutFunction, useRedirectFunctions, withAuthInfo, type WithAuthInfoProps } from '@propelauth/react';
 import { useState } from "react";
+import { Link } from 'react-router';
 
 const Sidebar = withAuthInfo(
     (props: WithAuthInfoProps) => {
+        console.log('Auth state:', {
+            isLoggedIn: props.isLoggedIn,
+            user: props.user,
+        });
         const logoutFunction = useLogoutFunction()
         const { redirectToLoginPage, redirectToSignupPage, redirectToAccountPage } = useRedirectFunctions()
         const itemList = [
-            { text: 'Dashboard', icon: <Dashboard /> },
+            { text: 'Project Dashboard', icon: <Dashboard /> },
             { text: 'Reports', icon: <Report /> },
             { text: 'Configurations', icon: <Settings /> }
         ]
@@ -37,9 +42,27 @@ const Sidebar = withAuthInfo(
                     </List>
                 </div>
                 <div className='login-button'>
-                    <IconButton >
-                        <Login />
-                    </IconButton>
+                    {
+                        props.isLoggedIn ?
+                            <>
+                                <IconButton onClick={() => redirectToAccountPage()}>
+                                    <Person />
+                                </IconButton>
+                                <IconButton onClick={() => logoutFunction(true)} >
+                                    <Logout />
+                                </IconButton>
+                            </>
+                            :
+                            <>
+                                <IconButton type='button' onClick={() => redirectToSignupPage()}>
+                                    <PersonAdd />
+                                </IconButton>
+                                <IconButton type='button' onClick={() => redirectToLoginPage()}>
+                                    <Login />
+                                </IconButton>
+                            </>
+
+                    }
                 </div>
             </Box>
         );
@@ -55,3 +78,5 @@ const Sidebar = withAuthInfo(
         )
     }
 )
+
+export default Sidebar

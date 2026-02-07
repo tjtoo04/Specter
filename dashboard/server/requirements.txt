@@ -4,3 +4,5 @@ pydantic
 python-dotenv
 PyJWT[crypto]
 propelauth_fastapi
+SQLAlchemy
+aiosqlite
