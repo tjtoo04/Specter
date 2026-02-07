@@ -93,8 +93,17 @@ async def update_config(
         setattr(db_config, key, value)
 
     await db.commit()
-    await db.refresh(db_config, ["user", "project"])
-    return db_config
+    stmt = (
+        select(Configuration)
+        .where(Configuration.id == config_id)
+        .options(
+            selectinload(Configuration.user),
+            selectinload(Configuration.project).selectinload(Project.users),
+        )
+    )
+
+    final_result = await db.execute(stmt)
+    return final_result.scalars().first()
 
 
 @router.delete("/{config_id}", status_code=status.HTTP_204_NO_CONTENT)
