@@ -9,6 +9,8 @@ services:
     environment:
       - WATCHFILES_FORCE_POLLING=true
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - .env
 
   frontend:
     build:
@@ -18,8 +20,7 @@ services:
     ports:
       - "5173:5173"
     volumes:
-      - ./src:/app/src
-      - ./package.json:/app/package.json
+      - .:/app
       - /app/node_modules
     depends_on:
       - backend

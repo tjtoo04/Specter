@@ -1,11 +1,15 @@
 import './App.css'
-import { Outlet } from 'react-router'
+import { AuthProvider } from "@propelauth/react";
+import { Outlet, useLocation } from 'react-router'
 import Sidebar from './components/Sidebar'
 import { useEffect, useMemo, useState } from 'react';
 import { Box, createTheme, CssBaseline, IconButton, type PaletteMode } from '@mui/material';
 import { ThemeProvider } from '@emotion/react';
 import { ColorModeContext } from './context/ColorModeContext';
 import { Brightness7, Brightness4 } from '@mui/icons-material';
+import { configs } from './utils/config';
+
+const noSidebarLocation = ['/login', '/register']
 
 function App() {
     const [mode, setMode] = useState<PaletteMode>(() => {
@@ -29,25 +33,36 @@ function App() {
         }
     }), [mode]);
 
+    const location = useLocation();
+
     useEffect(() => {
         localStorage.setItem('themeMode', mode);
     }, [mode]);
 
     return (
-        <ColorModeContext.Provider value={colorMode}>
-            <ThemeProvider theme={theme}>
-                <CssBaseline />
-                <div className='app-container' >
-                    <nav className='top-nav-bar'>
-                        <Sidebar />
-                        <IconButton onClick={colorMode.toggleColorMode} color="inherit">
-                            {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
-                        </IconButton>
-                    </nav>
-                    <Outlet />
-                </div>
-            </ThemeProvider>
-        </ColorModeContext.Provider>
+        <AuthProvider
+            authUrl={configs.authUrl}
+            minSecondsBeforeRefresh={120}
+        >
+            <ColorModeContext.Provider value={colorMode}>
+                <ThemeProvider theme={theme}>
+                    <CssBaseline />
+                    <div className='app-container' >
+                        <nav className='top-nav-bar'>
+                            {!noSidebarLocation.find(loc => loc === location.pathname) &&
+                                <>
+                                    <Sidebar />
+                                    <IconButton className='theme-toggle' onClick={colorMode.toggleColorMode} color="inherit">
+                                        {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+                                    </IconButton>
+                                </>
+                            }
+                        </nav>
+                        <Outlet />
+                    </div>
+                </ThemeProvider>
+            </ColorModeContext.Provider>
+        </AuthProvider>
     )
 }
 

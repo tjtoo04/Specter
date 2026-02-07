@@ -1,8 +1,11 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from propelauth_fastapi import init_auth, User
 
-mode = os.getenv("VITE_FRONTEND_URL_DEV")
+auth = init_auth(os.getenv("PROPEL_AUTH_URL"), os.getenv("PROPEL_AUTH"))
+
+mode = os.getenv("VITE_APP_MODE")
 url = (
     os.getenv("VITE_FRONTEND_URL_DEV")
     if mode == "dev"
@@ -28,6 +31,8 @@ def read_root():
 
 @app.get("/api/status")
 def get_status():
+    print(url)
+    print("pls")
     return {"status": "Specter Backend Online", "version": "0.1.0"}
 
 
@@ -38,3 +43,8 @@ def get_config():
         "context": "You are a helpful Specter agent.",
         "temperature": 0.7,
     }
+
+
+@app.get("/api/whoami")
+async def root(current_user: User = Depends(auth.require_user)):
+    return {"user_id": f"{current_user.user_id}"}
