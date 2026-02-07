@@ -1,13 +1,13 @@
 @font-face {
   font-family: "FoundersGrotesk";
-  src: url("/fonts/FoundersGrotesk-Medium.otf") format("opentype");
+  src: url("/fonts/AlrevoRegular-E47X9.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
 :root {
-  font-family: "FoundersGrotesk", Helvetica, Arial, sans-serif;
+  font-family: "Lexend Deca", sans-serif;
 }
 
 .app-container {

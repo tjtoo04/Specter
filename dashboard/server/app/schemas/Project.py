@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
+from .User import UserResponse
 
 
 class ProjectBase(BaseModel):
@@ -14,8 +15,12 @@ class ProjectUpdate(BaseModel):
     title: Optional[str] = None
 
 
+class AddUserToProject(BaseModel):
+    user_id: str
+
+
 class ProjectResponse(ProjectBase):
     id: int
+    users: List[UserResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

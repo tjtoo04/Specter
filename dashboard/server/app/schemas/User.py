@@ -3,14 +3,13 @@ from pydantic import BaseModel
 
 class UserCreate(BaseModel):
     id: str
-    name: str
+    username: str
     email: str
 
 
 class UserResponse(BaseModel):
-    id: int
-    name: str
+    id: str
+    username: str
     email: str
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

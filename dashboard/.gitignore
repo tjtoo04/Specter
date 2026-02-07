@@ -26,6 +26,7 @@ dist-ssr
 /server/app/__pycache__/
 /server/app/models/__pycache__/
 /server/app/schemas/__pycache__/
+/server/app/routes/__pycache__/
 /server/venv
 
 .env

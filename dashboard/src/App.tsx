@@ -24,14 +24,12 @@ function App() {
 
     const theme = useMemo(() => createTheme({
         palette: { mode }, typography: {
-            fontFamily: '"FoundersGrotesk", "Helvetica", "Arial", sans-serif',
+            fontFamily: '"Lexend Deca", sans-serif;',
             button: {
                 textTransform: 'none',
             }
         }
     }), [mode]);
-
-    const location = useLocation();
 
     useEffect(() => {
         localStorage.setItem('themeMode', mode);

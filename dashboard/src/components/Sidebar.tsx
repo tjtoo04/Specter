@@ -2,15 +2,12 @@ import './Sidebar.css'
 import { AppRegistration, Brightness4, Brightness7, Dashboard, Login, Logout, Menu, Person, PersonAdd, Report, Settings } from "@mui/icons-material";
 import { Box, Button, Divider, Drawer, IconButton, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
 import { useHostedPageUrls, useLogoutFunction, useRedirectFunctions, withAuthInfo, type WithAuthInfoProps } from '@propelauth/react';
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from 'react-router';
+import { api } from '../lib/api';
 
 const Sidebar = withAuthInfo(
     (props: WithAuthInfoProps) => {
-        console.log('Auth state:', {
-            isLoggedIn: props.isLoggedIn,
-            user: props.user,
-        });
         const logoutFunction = useLogoutFunction()
         const { redirectToLoginPage, redirectToSignupPage, redirectToAccountPage } = useRedirectFunctions()
         const itemList = [
@@ -23,6 +20,15 @@ const Sidebar = withAuthInfo(
         const toggleDrawer = (newOpen: boolean) => () => {
             setOpen(newOpen);
         };
+
+        const client = api(props.accessToken!)
+
+        useEffect(() => {
+            if (props.accessToken) {
+                client.whoAmI().then(console.log)
+            }
+
+        }, [])
 
         const DrawerList = (
             <Box sx={{ width: 250 }} role="presentation" className="drawer-list" onClick={toggleDrawer(false)}>
