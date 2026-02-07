@@ -3,8 +3,6 @@ services:
   # BACKEND (FastAPI)
   # =========================================
   backend:
-    # ⚠️ REPLACE 'your-github-username' and 'your-repo-name'
-    # Must be all lowercase!
     image: ghcr.io/${IMAGE_NAME}/backend:latest
     container_name: backend_prod
     
