@@ -12,22 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. DOWNLOAD THE CODE (CRITICAL MISSING STEP)
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # 2. Copy the file
-      - name: Copy Compose File to VM
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST_DASHBOARD_VM }}
-          username: ${{ secrets.SSH_DASHBOARD_VM_USER }}
-          key: ${{ secrets.DASHBOARD_VM_SSH_KEY }}
-          source: "./dashboard/docker-compose.deploy.yml"
-          target: "/home/${{ secrets.SSH_DASHBOARD_VM_USER }}/app"
-          strip_components: 1
-
-      # 3. SSH and Run
+      # 1. SSH into VM and do EVERYTHING (Create file + Run)
       - name: Deploy on VM
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -35,27 +20,37 @@ jobs:
           username: ${{ secrets.SSH_DASHBOARD_VM_USER }}
           key: ${{ secrets.DASHBOARD_VM_SSH_KEY }}
           script: |
-            # 1. Setup variables (Force Lowercase)
+            # 1. Prepare Variables (Force Lowercase)
             REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-            echo "Debug: Deploying image for repo: $REPO_NAME"
+            echo "Debug: Target Image -> ghcr.io/$REPO_NAME/backend:latest"
 
+            # 2. Prepare Directory (Clean slate)
+            mkdir -p ~/app
             cd ~/app
 
-            # 2. Login
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # 3. GENERATE THE FILE DIRECTLY ON THE VM
+            # We use 'cat' to write the file content instantly. 
+            # Note: We use $REPO_NAME directly here, no need for export!
+            cat <<EOF > docker-compose.yml
+            services:
+              backend:
+                image: ghcr.io/$REPO_NAME/backend:latest
+                container_name: backend_prod
+                restart: always
+                ports:
+                  - "8000:8000"
+            EOF
 
-            # 3. Rename file if needed (ensure it exists)
-            if [ -f docker-compose.deploy.yml ]; then
-              mv docker-compose.deploy.yml docker-compose.yml
-            fi
+            # 4. Login to Registry
+            # using 'tr -d' ensures no hidden newline characters break the login
+            echo "${{ secrets.GITHUB_TOKEN }}" | tr -d '\n' | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # 4. Pull & Up (PASS VARIABLE INLINE)
-            # We explicitly pass IMAGE_NAME to the command
-            IMAGE_NAME=$REPO_NAME docker compose pull
-            IMAGE_NAME=$REPO_NAME docker compose up -d --remove-orphans
+            # 5. Pull and Restart
+            docker compose pull
+            docker compose up -d --remove-orphans
 
-            # 5. Verify Success
+            # 6. Verify and Cleanup
             echo "-----------------------------------"
-            echo "Deployment Status:"
             docker ps
             echo "-----------------------------------"
+            docker image prune -f
