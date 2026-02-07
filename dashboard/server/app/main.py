@@ -21,6 +21,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to the Specter Backend API"}
+
 
 @app.get("/api/status")
 def get_status():
