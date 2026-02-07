@@ -48,7 +48,7 @@ jobs:
     uses: ./.github/workflows/Global-CD.yml
     with:
       service_name: backend
-      image_name: ghcr.io/${{ github.repository }}/backend:latest
+      image_name: ghcr.io/${{ github.repository_owner }}/specter/backend:latest
       host_port: "8000"
       container_port: "8000"
     secrets:

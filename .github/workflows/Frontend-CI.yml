@@ -68,7 +68,7 @@ jobs:
     with:
       service_name: frontend
       # We force lowercase for the repo name just in case
-      image_name: ghcr.io/${{ github.repository }}/frontend:latest
+      image_name: ghcr.io/${{ github.repository_owner }}/specter/frontend:latest
       host_port: "5173"
       container_port: "5173"
     secrets:

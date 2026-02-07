@@ -29,56 +29,59 @@ jobs:
   deploy-dashboard-vm:
     runs-on: ubuntu-latest
     steps:
+      # STEP 1: Normalize Inputs (Fixes the "Specter" vs "specter" case issue)
+      - name: Normalize Image Name
+        id: normalize
+        run: |
+          # Convert the input image name to strictly lowercase
+          LOWER_IMAGE=$(echo "${{ inputs.image_name }}" | tr '[:upper:]' '[:lower:]')
+          echo "image=$LOWER_IMAGE" >> $GITHUB_OUTPUT
+          echo "Normalized image: $LOWER_IMAGE"
+
+      # STEP 2: Deploy (SSH)
       - name: Deploy to VM
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
+          # We use the normalized image from Step 1
           script: |
-            # 1. Setup Directory
+            echo "--- STARTING DEPLOYMENT FOR ${{ inputs.service_name }} ---"
+            
+            # 1. Prepare Directory
             mkdir -p ~/app
             cd ~/app
 
             # 2. Login to Registry
             echo "${{ secrets.GH_TOKEN }}" | tr -d '\n' | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            # 3. Update the .env file (This is the Magic Trick)
-            # We use 'touch' to ensure file exists, then grep to see if variable exists.
-            # If it exists, we replace it. If not, we append it.
-            touch .env
-            
+            # 3. Update .env file
+            # We use the normalized lowercase image name here
             VAR_NAME="${{ inputs.service_name }}_IMAGE"
-            NEW_VALUE="${{ inputs.image_name }}"
+            NEW_VALUE="${{ steps.normalize.outputs.image }}"
             
+            touch .env
             if grep -q "$VAR_NAME=" .env; then
-              # Use sed to replace the existing line
               sed -i "s|$VAR_NAME=.*|$VAR_NAME=$NEW_VALUE|" .env
             else
-              # Append to end of file
               echo "$VAR_NAME=$NEW_VALUE" >> .env
             fi
-
-            echo "Updated .env with $VAR_NAME=$NEW_VALUE"
-
-            # 4. Create/Overwrite the Master docker-compose.yml
-            # We overwrite this every time to ensure the config is always up to date 
-            # with both services defined.
-            # Notice the variables: ${frontend_IMAGE} and ${backend_IMAGE}
+            
+            # 4. Refresh docker-compose.yml
             cat <<EOF > docker-compose.yml
             services:
               frontend:
-                # Fallback to 'latest' if variable is missing
-                image: \${frontend_IMAGE:-ghcr.io/${{ github.repository }}/frontend:latest}
+                image: \${frontend_IMAGE}
                 container_name: frontend_prod
                 restart: always
                 ports:
-                  - "3000:80"
+                  - "3000:5173" # Mapping VM 3000 -> Container 5173
                 networks:
                   - app_network
 
               backend:
-                image: \${backend_IMAGE:-ghcr.io/${{ github.repository }}/backend:latest}
+                image: \${backend_IMAGE}
                 container_name: backend_prod
                 restart: always
                 ports:
@@ -91,10 +94,33 @@ jobs:
                 driver: bridge
             EOF
 
-            # 5. Pull and Update ONLY the specific service
-            # Docker Compose will read the .env file automatically
+            # 5. Pull and Restart Service
             docker compose pull ${{ inputs.service_name }}
             docker compose up -d ${{ inputs.service_name }}
-
-            # 6. Cleanup
+            
+            # Cleanup old images
             docker image prune -f
+
+      # STEP 3: Verify (SSH) - Fails pipeline if container is not running
+      - name: Verify Health
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            echo "--- VERIFYING ${{ inputs.service_name }} ---"
+            cd ~/app
+            
+            # Check strictly if the specific container is in 'running' state
+            CONTAINER_NAME="${{ inputs.service_name }}_prod"
+            STATUS=$(docker inspect -f '{{.State.Status}}' $CONTAINER_NAME 2>/dev/null || echo "not_found")
+            
+            if [ "$STATUS" == "running" ]; then
+              echo "✅ Success: $CONTAINER_NAME is running."
+              docker ps --filter "name=$CONTAINER_NAME"
+            else
+              echo "❌ Error: $CONTAINER_NAME is in state: $STATUS"
+              docker logs $CONTAINER_NAME | tail -n 20
+              exit 1
+            fi
