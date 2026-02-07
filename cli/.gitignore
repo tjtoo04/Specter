@@ -1,1 +1,4 @@
-*.exe
+# Ignore binaries
+specter
+specter.exe
+dist/

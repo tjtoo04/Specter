@@ -32,9 +32,10 @@ jobs:
       - name: Run Tests
         run: go test ./... -v
 
-      # 2. CI Step: Verify Build (Runs on every push)
+      # 2. CI Step: Verify Build
       - name: Verify Build
-        run: go build -v ./cmd/specter
+        # ADD "-o /dev/null" to discard the binary after building
+        run: go build -v -o /dev/null ./cmd/specter
 
       # 3. CD Step: Run GoReleaser (Only runs on tags v*)
       - name: Run GoReleaser
