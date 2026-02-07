@@ -34,16 +34,20 @@ jobs:
           host: ${{ secrets.SSH_HOST_DASHBOARD_VM }}
           username: ${{ secrets.SSH_DASHBOARD_VM_USER }}
           key: ${{ secrets.DASHBOARD_VM_SSH_KEY }}
-          # We removed 'envs: IMAGE_NAME' because we are setting it directly in the script below
           script: |
-            cd ~/app/dashboard
+            cd ~/app
             
-            # Use the renamed file
-            mv docker-compose.deploy.yml docker-compose.yml
+            # 1. Force the repo name to LOWERCASE
+            # This turns 'tjtoo04/Specter' into 'tjtoo04/specter'
+            export IMAGE_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
             
-            # Set the variable for Docker to use
-            export IMAGE_NAME=${{ github.repository }}
+            # 2. Login using the lowercase name
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
-            # Pull & Up
+            # 3. Pull & Run (Docker will now see the lowercase variable)
+            # We add --remove-orphans to clean up any messy previous attempts
             docker compose pull
-            docker compose up -d
+            docker compose up -d --remove-orphans
+            
+            # Cleanup
+            docker image prune -f
