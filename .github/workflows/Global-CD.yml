@@ -68,6 +68,8 @@ jobs:
               echo "$VAR_NAME=$NEW_VALUE" >> .env
             fi
             
+            docker network create global_network || true # Create network if not exists
+
             # 4. Refresh docker-compose.yml
             cat <<EOF > docker-compose.yml
             services:
@@ -75,25 +77,25 @@ jobs:
                 image: \${frontend_IMAGE}
                 container_name: frontend_prod
                 restart: always
-                env_file: .env   # <--- ADD THIS
-                ports:
-                  - "3000:5173" # Mapping VM 3000 -> Container 5173
+                env_file: .env
+                # 'expose' is removed as it's not strictly necessary, 
+                # but the container is still accessible on 5173 internally.
                 networks:
-                  - app_network
+                  - global_network
 
               backend:
                 image: \${backend_IMAGE}
                 container_name: backend_prod
                 restart: always
-                env_file: .env   # <--- ADD THIS
-                ports:
-                  - "8000:8000"
+                env_file: .env
+                # REMOVED 'ports' section to close the public side door.
+                # Nginx will still reach this via internal network on port 8000.
                 networks:
-                  - app_network
+                  - global_network
 
             networks:
-              app_network:
-                driver: bridge
+              global_network:
+                external: true
             EOF
 
             # 5. Pull and Restart Service
