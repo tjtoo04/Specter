@@ -1,35 +1,54 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
+import { Outlet } from 'react-router'
+import Sidebar from './components/Sidebar'
+import { useEffect, useMemo, useState } from 'react';
+import { Box, createTheme, CssBaseline, IconButton, type PaletteMode } from '@mui/material';
+import { ThemeProvider } from '@emotion/react';
+import { ColorModeContext } from './context/ColorModeContext';
+import { Brightness7, Brightness4 } from '@mui/icons-material';
 
 function App() {
-  const [count, setCount] = useState(0)
+    const [mode, setMode] = useState<PaletteMode>(() => {
+        const savedMode = localStorage.getItem('themeMode');
+        return (savedMode as PaletteMode) || 'light';
+    });
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    const colorMode = useMemo(() => ({
+        toggleColorMode: () => {
+            setMode((prev) => (prev === 'light' ? 'dark' : 'light'));
+        },
+        mode,
+    }), [mode]);
+
+    const theme = useMemo(() => createTheme({
+        palette: { mode }, typography: {
+            fontFamily: '"FoundersGrotesk", "Helvetica", "Arial", sans-serif',
+            button: {
+                textTransform: 'none',
+            }
+        }
+    }), [mode]);
+
+    useEffect(() => {
+        localStorage.setItem('themeMode', mode);
+    }, [mode]);
+
+    return (
+        <ColorModeContext.Provider value={colorMode}>
+            <ThemeProvider theme={theme}>
+                <CssBaseline />
+                <div className='app-container' >
+                    <nav className='top-nav-bar'>
+                        <Sidebar />
+                        <IconButton onClick={colorMode.toggleColorMode} color="inherit">
+                            {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
+                        </IconButton>
+                    </nav>
+                    <Outlet />
+                </div>
+            </ThemeProvider>
+        </ColorModeContext.Provider>
+    )
 }
 
 export default App
