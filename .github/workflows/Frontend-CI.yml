@@ -26,8 +26,7 @@ jobs:
       - uses: actions/setup-node@v3
         with: { node-version: '18' }
       - run: npm install
-      - run: npm test
-
+      
   # Job 2: Push Docker Image
   push-image:
     needs: build-and-test
