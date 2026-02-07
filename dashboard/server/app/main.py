@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 from .database import Base, engine
-from .routes import configurations, users, projects
+from .routes import configurations, users, projects, auth
 
 
 mode = os.getenv("VITE_APP_MODE")
@@ -50,3 +50,4 @@ def get_status():
 app.include_router(configurations.router)
 app.include_router(users.router)
 app.include_router(projects.router)
+app.include_router(auth.router)

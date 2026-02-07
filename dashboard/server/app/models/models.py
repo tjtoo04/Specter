@@ -1,5 +1,6 @@
 from typing import List
 
+from pydantic import BaseModel
 from sqlalchemy import Column, String, Table, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -11,6 +12,10 @@ user_projects = Table(
     Column("user_id", ForeignKey("users.id"), primary_key=True),
     Column("project_id", ForeignKey("projects.id"), primary_key=True),
 )
+
+
+class MagicLinkRequest(BaseModel):
+    email: str
 
 
 class Project(Base):

@@ -2,6 +2,7 @@ import { createBrowserRouter } from "react-router";
 import App from "./App";
 import DashboardPage from "./pages/ProjectDashboard";
 import ConfigurationsPage from "./pages/Configuration";
+import VerifyOTP from "./pages/VerifyOTP";
 
 const router = createBrowserRouter([
     {
@@ -12,6 +13,7 @@ const router = createBrowserRouter([
             // { path: '/register', Component: RegisterPage }
         ]
     },
+    { path: '/verify-otp', Component: VerifyOTP },
 ]);
 
 export default router

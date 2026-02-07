@@ -1,9 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"net/http"
+	"io"
+	"os"
 
+	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/client"
 	"github.com/spf13/cobra"
 )
 
@@ -17,28 +21,39 @@ var runCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Initializing Specter Agent...")
 
-		// 1. Connect to Dashboard & Fetch Context
-		fmt.Println("Connecting to dashboard server to fetch AI context...")
-		config, err := fetchDashboardConfig("http://localhost:8080/api/config")
+		// TODO: Change docker image
+		imageName := "your-docker-repo/specter-agent:latest"
+		err := pullAgentImage(imageName)
 		if err != nil {
-			fmt.Printf("Warning: Could not reach dashboard. Using default context. (%v)\n", err)
-		} else {
-			fmt.Printf("Context received: %s\n", config)
+			fmt.Printf("Error pulling agent image: %v\n", err)
+			return
 		}
 
-		// 2. Start the Agent logic
-		fmt.Println("🤖 Agent is now active. Monitoring application...")
-		// Your logic to start the local LLM would go here
+		fmt.Println("Agent image is ready. Starting container...")
 	},
 }
 
-// Simple placeholder for dashboard connection
-func fetchDashboardConfig(url string) (string, error) {
-	// In a real app, you'd use a real HTTP client and JSON decoding
-	resp, err := http.Get(url)
+func pullAgentImage(imageName string) error {
+	ctx := context.Background()
+
+	// Initialize the Docker client
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return "", err
+		return fmt.Errorf("unable to connect to Docker: %w", err)
 	}
-	defer resp.Body.Close()
-	return "Standard AI Debugger Context", nil
+
+	fmt.Printf("Pulling image: %s\n", imageName)
+
+	out, err := cli.ImagePull(ctx, imageName, image.PullOptions{})
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(os.Stdout, out)
+	if err != nil {
+		return fmt.Errorf("error reading pull progress: %w", err)
+	}
+
+	return nil
 }

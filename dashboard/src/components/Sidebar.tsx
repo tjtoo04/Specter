@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router';
 
 const Sidebar = withAuthInfo(
     (props: WithAuthInfoProps) => {
+        console.log(props)
         const logoutFunction = useLogoutFunction()
         let navigate = useNavigate();
 
