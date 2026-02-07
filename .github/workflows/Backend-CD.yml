@@ -1,0 +1,49 @@
+name: Backend CD (Deploy Only)
+
+on:
+  workflow_run:
+    workflows: ["Backend CI (FastAPI)"] # Must match the 'name' of File 1 exactly
+    types:
+      - completed
+
+jobs:
+  deploy:
+    # Only run if the CI workflow actually succeeded (not if it failed)
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Copy Compose File to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST_DASHBOARD_VM }}
+          username: ${{ secrets.SSH_DASHBOARD_VM_USER }}
+          key: ${{ secrets.DASHBOARD_VM_SSH_KEY }}
+          # Source file (in your git repo)
+          source: "./dashboard/docker-compose.deploy.yml"
+          # Target folder (on the VM)
+          target: "/home/${{ secrets.SSH_DASHBOARD_VM_USER }}/app"
+          # Remove the folder prefix so it lands directly in ~/app
+          strip_components: 1
+
+      # ---------------------------------------------------------
+      # STEP 3: SSH in and Run
+      # ---------------------------------------------------------
+      - name: Deploy on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST_DASHBOARD_VM }}
+          username: ${{ secrets.SSH_DASHBOARD_VM_USER }}
+          key: ${{ secrets.DASHBOARD_VM_SSH_KEY }}
+          # Pass the repo name (e.g. "user/repo") as an env var to the script
+          envs: IMAGE_NAME
+          script: |
+            cd ~/app
+            
+            # Export the variable so docker-compose can see it
+            export IMAGE_NAME=${{ github.repository }}
+            
+            # Now run docker commands
+            # Because we exported IMAGE_NAME, docker-compose will substitute it!
+            docker compose pull
+            docker compose up -d
