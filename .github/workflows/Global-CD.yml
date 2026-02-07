@@ -75,6 +75,7 @@ jobs:
                 image: \${frontend_IMAGE}
                 container_name: frontend_prod
                 restart: always
+                env_file: .env   # <--- ADD THIS
                 ports:
                   - "3000:5173" # Mapping VM 3000 -> Container 5173
                 networks:
@@ -84,6 +85,7 @@ jobs:
                 image: \${backend_IMAGE}
                 container_name: backend_prod
                 restart: always
+                env_file: .env   # <--- ADD THIS
                 ports:
                   - "8000:8000"
                 networks:
