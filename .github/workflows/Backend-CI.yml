@@ -5,6 +5,7 @@ on:
     branches: [ "main" ]
     paths:
       - "dashboard/server/**" # Only trigger if backend code changes
+      - "dashboard/docker-compose.deploy.yml" # Also trigger if deploy file changes
     # Optional: Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
