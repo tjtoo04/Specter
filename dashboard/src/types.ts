@@ -24,6 +24,18 @@ export interface Configuration {
     project: Project;
 }
 
-export type ConfigurationData = Configuration[];
+export interface Report {
+    id: number;
+    data: string; // Base64 
+}
 
+
+export interface ReportMetadata {
+    id: number;
+    size?: number;
+}
+
+
+export type ReportData = Report[];
+export type ConfigurationData = Configuration[];
 export type ProjectData = Project[];

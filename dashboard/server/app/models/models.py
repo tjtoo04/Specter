@@ -55,7 +55,7 @@ class Report(Base):
 
 
 class Configuration(Base):
-    __tablename__ = "Configurations"
+    __tablename__ = "configurations"
     id: Mapped[int] = mapped_column(primary_key=True)
     context: Mapped[str] = mapped_column(Text)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))

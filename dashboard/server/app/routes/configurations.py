@@ -75,6 +75,8 @@ async def get_project_configs(
     current_user=Depends(auth.require_user),
     db: AsyncSession = Depends(get_db),
 ):
+
+    print(current_user.user_id, project_id)
     stmt = (
         select(Configuration)
         .where(
@@ -88,7 +90,6 @@ async def get_project_configs(
     )
 
     result = await db.execute(stmt)
-    print("Returning data ", result.scalars().all())
     return result.scalars().all()
 
 
