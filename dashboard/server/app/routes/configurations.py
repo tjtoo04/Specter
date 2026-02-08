@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from ..auth import auth
 from ..database import get_db
-from ..models.models import Configuration, Project
+from ..models.models import ConfigRequest, Configuration, Project
 from ..schemas.Configuration import (
     ConfigurationCreate,
     ConfigurationResponse,
@@ -46,6 +46,29 @@ async def create_config(
     return db_config
 
 
+@router.post("/project/{project_id}", response_model=List[ConfigurationResponse])
+async def get_project_configs_cli(
+    project_id: int,
+    request_data: ConfigRequest,
+    current_user=Depends(auth.require_user),
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = (
+        select(Configuration)
+        .where(
+            Configuration.project_id == project_id,
+            Configuration.user_id == request_data.user_id,
+        )
+        .options(
+            selectinload(Configuration.user),
+            selectinload(Configuration.project).selectinload(Project.users),
+        )
+    )
+
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
 @router.get("/project/{project_id}", response_model=List[ConfigurationResponse])
 async def get_project_configs(
     project_id: int,
@@ -65,6 +88,7 @@ async def get_project_configs(
     )
 
     result = await db.execute(stmt)
+    print("Returning data ", result.scalars().all())
     return result.scalars().all()
 
 

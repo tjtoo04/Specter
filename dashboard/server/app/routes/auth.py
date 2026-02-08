@@ -1,5 +1,5 @@
 import random
-from fastapi import FastAPI, BackgroundTasks, APIRouter
+from fastapi import BackgroundTasks, APIRouter
 
 from ..helpers.email import send_smtp_email
 
@@ -16,7 +16,6 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 def trigger_otp(request: MagicLinkRequest, background_tasks: BackgroundTasks):
     otp = f"{random.randint(100000, 999999)}"
 
-    # Store it (In a real app, use Redis or a DB with expiry)
     otp_store[request.email] = otp
     login_attempts[request.email] = {"status": "pending", "token": None}
 
@@ -48,7 +47,11 @@ def verify_otp(request: VerifyOtpRequest):
             return {"message": "User not found in PropelAuth"}, 404
 
         token = auth.create_access_token(cli_user.user_id, 999).access_token
-        login_attempts[email] = {"status": "completed", "token": token}
+        login_attempts[email] = {
+            "status": "completed",
+            "token": token,
+            "id": cli_user.user_id,
+        }
         return {"message": "Verified"}
 
     return {"message": "Invalid OTP"}, 401

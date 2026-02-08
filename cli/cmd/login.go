@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,11 +23,13 @@ type MagicLinkRequest struct {
 type PollResponse struct {
 	Status string `json:"status"`
 	Token  string `json:"token"`
+	ID     string `json:"id"`
 }
 
 type AuthConfig struct {
 	AccessToken string `json:"access_token"`
 	Expiry      int64  `json:"expiry"`
+	UserID      string `json:"user_id"`
 }
 
 var loginCmd = &cobra.Command{
@@ -40,7 +43,6 @@ var loginCmd = &cobra.Command{
 		} else {
 			frontendURL = os.Getenv("FRONTEND_URL_PROD")
 		}
-
 		verifyPath := strings.TrimSuffix(frontendURL, "/") + "/verify-otp"
 
 		fmt.Print("Enter your email: ")
@@ -62,13 +64,13 @@ var loginCmd = &cobra.Command{
 		fmt.Println("---------------------------------------------------------")
 		fmt.Println("Waiting for verification... (Timeout in 5 mins)")
 
-		token, err := pollForCompletion(email)
+		token, id, err := pollForCompletion(email)
 		if err != nil {
 			fmt.Printf("Login failed: %v\n", err)
 			return
 		}
 
-		if err := saveToken(token); err != nil {
+		if err := saveTokenAndID(token, id); err != nil {
 			fmt.Printf("Failed to save credentials: %v\n", err)
 			return
 		}
@@ -78,7 +80,14 @@ var loginCmd = &cobra.Command{
 }
 
 func triggerMagicLink(email string) error {
-	url := "http://localhost:8000/api/auth/magic-link"
+	mode := os.Getenv("APP_MODE")
+	backendURL := ""
+	if mode == "dev" {
+		backendURL = os.Getenv("BACKEND_URL_DEV")
+	} else {
+		backendURL = os.Getenv("BACKEND_URL_PROD")
+	}
+	url := backendURL + "/api/auth/magic-link"
 	body, _ := json.Marshal(MagicLinkRequest{Email: email})
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(body))
 	if err != nil || resp.StatusCode != http.StatusOK {
@@ -87,8 +96,17 @@ func triggerMagicLink(email string) error {
 	return nil
 }
 
-func pollForCompletion(email string) (string, error) {
-	url := fmt.Sprintf("http://localhost:8000/api/auth/poll?email=%s", email)
+func pollForCompletion(email string) (string, string, error) {
+	mode := os.Getenv("APP_MODE")
+	backendURL := ""
+	if mode == "dev" {
+		backendURL = os.Getenv("BACKEND_URL_DEV")
+	} else {
+		backendURL = os.Getenv("BACKEND_URL_PROD")
+	}
+
+	safeEmail := url.QueryEscape(email)
+	url := fmt.Sprintf("%s/api/auth/poll?email=%s", backendURL, safeEmail)
 	timeout := time.After(5 * time.Minute)
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
@@ -96,7 +114,7 @@ func pollForCompletion(email string) (string, error) {
 	for {
 		select {
 		case <-timeout:
-			return "", fmt.Errorf("login timed out")
+			return "", "", fmt.Errorf("login timed out")
 		case <-ticker.C:
 			resp, err := http.Get(url)
 			if err != nil {
@@ -107,7 +125,7 @@ func pollForCompletion(email string) (string, error) {
 			resp.Body.Close()
 
 			if result.Status == "completed" {
-				return result.Token, nil
+				return result.Token, result.ID, nil
 			}
 		}
 	}
@@ -121,7 +139,7 @@ func init() {
 	rootCmd.AddCommand(loginCmd)
 }
 
-func saveToken(token string) error {
+func saveTokenAndID(token string, id string) error {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -136,6 +154,7 @@ func saveToken(token string) error {
 
 	data := AuthConfig{
 		AccessToken: token,
+		UserID:      id,
 		Expiry:      time.Now().Add(24 * time.Hour).Unix(),
 	}
 

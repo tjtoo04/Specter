@@ -1,13 +1,17 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 )
 
@@ -16,18 +20,32 @@ var pullCmd = &cobra.Command{
 	Short: "Pull project configuration from FastAPI",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		projectID := args[0]
-		fmt.Printf("Fetching config for project: %s...\n", projectID)
+		mode := os.Getenv("APP_MODE")
+		backendURL := ""
+		if mode == "dev" {
+			backendURL = os.Getenv("BACKEND_URL_DEV")
+		} else {
+			backendURL = os.Getenv("BACKEND_URL_PROD")
+		}
 
-		token, err := loadToken()
+		token, id, err := loadToken()
 		if err != nil {
 			fmt.Printf("Error: Not logged in. Please run 'specter login' first. (%v)\n", err)
 			return
 		}
 
-		url := "http://localhost:8000/api/configurations/project/" + projectID
-		req, _ := http.NewRequest("GET", url, nil)
+		requestBody, _ := json.Marshal(map[string]string{
+			"user_id": id,
+		})
+
+		configPath := strings.TrimSuffix(backendURL, "/") + "/api/configs/project/"
+		projectID := args[0]
+		fmt.Printf("Fetching config for project: %s...\n", projectID)
+
+		url := configPath + projectID
+		req, _ := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
 		req.Header.Set("Authorization", "Bearer "+token)
+		req.Header.Set("Content-Type", "application/json")
 
 		client := &http.Client{}
 		resp, err := client.Do(req)
@@ -48,6 +66,7 @@ var pullCmd = &cobra.Command{
 			return
 		}
 
+		fmt.Print(string(body))
 		if err := saveConfig(body); err != nil {
 			fmt.Printf("Error saving config: %v\n", err)
 			return
@@ -57,21 +76,21 @@ var pullCmd = &cobra.Command{
 	},
 }
 
-func loadToken() (string, error) {
+func loadToken() (string, string, error) {
 	home, _ := os.UserHomeDir()
 	path := filepath.Join(home, ".specter", "auth.json")
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	var config AuthConfig // Uses the struct defined in login.go
+	var config AuthConfig
 	if err := json.Unmarshal(data, &config); err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return config.AccessToken, nil
+	return config.AccessToken, config.UserID, nil
 }
 
 func saveConfig(content []byte) error {
@@ -85,5 +104,9 @@ func saveConfig(content []byte) error {
 }
 
 func init() {
+	err := godotenv.Load("../../.env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 	rootCmd.AddCommand(pullCmd)
 }

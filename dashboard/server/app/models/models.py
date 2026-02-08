@@ -1,7 +1,7 @@
 from typing import List
 
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import Column, String, Table, Text, ForeignKey
+from sqlalchemy import Column, String, Table, Text, ForeignKey, LargeBinary
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -23,6 +23,10 @@ class VerifyOtpRequest(BaseModel):
     otp: str
 
 
+class ConfigRequest(BaseModel):
+    user_id: str
+
+
 class Project(Base):
     __tablename__ = "projects"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -42,6 +46,12 @@ class UserModel(Base):
     projects: Mapped[List["Project"]] = relationship(
         secondary=user_projects, back_populates="users"
     )
+
+
+class Report(Base):
+    __tablename__ = "reports"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    data: Mapped[bytes] = mapped_column(LargeBinary)
 
 
 class Configuration(Base):
