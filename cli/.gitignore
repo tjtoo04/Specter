@@ -1,3 +1,8 @@
+/cmd/specter/specter
+
+.env
+go.work.sum
+
 # Ignore binaries
 specter
 specter.exe
