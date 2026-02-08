@@ -126,7 +126,7 @@ def get_function_responses(page, results):
 
 try:
   # Go to initial page
-  page.goto("https://ai.google.dev/gemini-api/docs")
+  page.goto("https://specterai.duckdns.org/")
 
   # Configure the model with system prompt
   config = types.GenerateContentConfig(
@@ -151,52 +151,87 @@ try:
   
   # Store all screen analyses
   screen_analyses = []
+  last_screen_type = None
+  screen_repeat_count = 0
   
   turn_limit = 15
   for i in range(turn_limit):
-        print(f"\n--- Turn {i+1} ---")
-        print("Thinking...")
-        response = client.models.generate_content(
-            model='gemini-2.5-computer-use-preview-10-2025',
-            contents=contents,
-            config=config,
-        )
+      turn_start_time = time.time()
+      pending_jsons = []
+      print(f"\n--- Turn {i+1} ---")
+      print("Thinking...")
+      response = client.models.generate_content(
+          model='gemini-2.5-computer-use-preview-10-2025',
+          contents=contents,
+          config=config,
+      )
 
-        candidate = response.candidates[0]
-        contents.append(candidate.content)
+      candidate = response.candidates[0]
+      contents.append(candidate.content)
 
-        # Print any text responses (including JSON analysis)
-        text_parts = [part.text for part in candidate.content.parts if part.text]
-        if text_parts:
-            print("\n" + "="*60)
-            print("AGENT RESPONSE:")
-            print("="*60)
-            for text in text_parts:
-                print(text)
-                # Extract and store JSON analysis
-                json_data = extract_json_from_text(text)
-                if json_data:
-                    json_data['turn'] = i + 1
-                    json_data['url'] = page.url
-                    json_data['timestamp'] = int(time.time())
-                    screen_analyses.append(json_data)
-                    print(f"\n✓ Captured analysis for: {json_data.get('screen_type', 'unknown')}")
-            print("="*60 + "\n")
+      # Print any text responses (including JSON analysis)
+      text_parts = [part.text for part in candidate.content.parts if part.text]
+      if text_parts:
+          print("\n" + "="*60)
+          print("AGENT RESPONSE:")
+          print("="*60)
+          for text in text_parts:
+              print(text)
+              # Extract and store JSON analysis
+              json_data = extract_json_from_text(text)
+              if json_data:
+                  json_data['turn'] = i + 1
+                  json_data['url'] = page.url
+                  json_data['timestamp'] = int(time.time())
+                  pending_jsons.append(json_data)
+          print("="*60 + "\n")
 
-        has_function_calls = any(part.function_call for part in candidate.content.parts)
-        if not has_function_calls:
-            print("\nAgent finished exploration.")
-            break
+      function_calls = [part.function_call for part in candidate.content.parts if part.function_call]
+      attempts = len(function_calls)
+      last_action = function_calls[-1].name if function_calls else None
+      has_function_calls = attempts > 0
+      if not has_function_calls:
+          turn_duration = max(0, round(time.time() - turn_start_time))
+          for json_data in pending_jsons:
+              screen_type = json_data.get('screen_type')
+              if screen_type and screen_type == last_screen_type:
+                  screen_repeat_count += 1
+              else:
+                  screen_repeat_count = 1
+                  last_screen_type = screen_type
+              json_data['time_on_screen'] = turn_duration
+              json_data['attempts'] = attempts
+              json_data['last_action'] = last_action
+              json_data['screen_repeat_count'] = screen_repeat_count
+              screen_analyses.append(json_data)
+              print(f"\n✓ Captured analysis for: {json_data.get('screen_type', 'unknown')}")
+          print("\nAgent finished exploration.")
+          break
 
-        print("Executing actions...")
-        results = execute_function_calls(candidate, page, SCREEN_WIDTH, SCREEN_HEIGHT)
+      print("Executing actions...")
+      results = execute_function_calls(candidate, page, SCREEN_WIDTH, SCREEN_HEIGHT)
 
-        print("Capturing state...")
-        function_responses = get_function_responses(page, results)
+      print("Capturing state...")
+      function_responses = get_function_responses(page, results)
 
-        contents.append(
-            Content(role="user", parts=[Part(function_response=fr) for fr in function_responses])
-        )
+      contents.append(
+          Content(role="user", parts=[Part(function_response=fr) for fr in function_responses])
+      )
+
+      turn_duration = max(0, round(time.time() - turn_start_time))
+      for json_data in pending_jsons:
+          screen_type = json_data.get('screen_type')
+          if screen_type and screen_type == last_screen_type:
+              screen_repeat_count += 1
+          else:
+              screen_repeat_count = 1
+              last_screen_type = screen_type
+          json_data['time_on_screen'] = turn_duration
+          json_data['attempts'] = attempts
+          json_data['last_action'] = last_action
+          json_data['screen_repeat_count'] = screen_repeat_count
+          screen_analyses.append(json_data)
+          print(f"\n✓ Captured analysis for: {json_data.get('screen_type', 'unknown')}")
   
   # Print summary of collected analyses
   print("\n" + "="*60)
