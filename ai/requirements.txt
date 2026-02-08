@@ -1,0 +1,7 @@
+# Mystery Shopper AI agent – alerting
+slack-sdk>=3.26.0
+python-dotenv>=1.0.0
+
+# Teams/Discord/Jira use stdlib only
+# Gemini (required for Routing Agent team assignment)
+google-genai>=1.0.0
