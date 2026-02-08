@@ -1,0 +1,15 @@
+name: Backend CD (Deploy Only)
+
+on:
+  workflow_call:
+
+jobs:
+  deploy-to-dashboard-vm:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. SSH into VM and do EVERYTHING (Create file + Run)
+      - name: Deploy on VM
+        uses: appleboy/ssh-action@v1.0.3
+          

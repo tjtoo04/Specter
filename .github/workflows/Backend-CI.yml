@@ -1,0 +1,58 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "dashboard/server/**"
+  workflow_dispatch:
+    
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/backend
+
+jobs:
+  # Job 1: Build & Push
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Log in to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./dashboard/server
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+
+  # Job 2: Call Global CD
+  deploy-backend:
+    needs: build-and-push
+    uses: ./.github/workflows/Global-CD.yml
+    with:
+      service_name: backend
+      image_name: ghcr.io/${{ github.repository_owner }}/specter/backend:latest
+      host_port: "8000"
+      container_port: "8000"
+    secrets:
+      SSH_HOST: ${{ secrets.SSH_HOST_DASHBOARD_VM }}
+      SSH_USER: ${{ secrets.SSH_DASHBOARD_VM_USER }}
+      SSH_KEY: ${{ secrets.DASHBOARD_VM_SSH_KEY }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

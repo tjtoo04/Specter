@@ -1,0 +1,39 @@
+services:
+  # =========================================
+  # BACKEND (FastAPI)
+  # =========================================
+  backend:
+    image: ghcr.io/${IMAGE_NAME}/backend:latest
+    container_name: backend_prod
+    
+    # Restart automatically if it crashes or the VM reboots
+    restart: always
+    
+    # Map port 8000 on the VM to 8000 in the container
+    ports:
+      - "8000:8000"
+    
+    # Optional: Load environment variables from a .env file on the VM
+    # env_file:
+    #   - .env
+
+    # Healthcheck (Optional but recommended for production)
+    # This tells Docker if your app is actually "ready"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =========================================
+  # FRONTEND (Next.js / React)
+  # =========================================
+  # Uncomment this section when you are ready to deploy the frontend
+  # frontend:
+  #   image: ghcr.io/your-github-username/your-repo-name/frontend:latest
+  #   container_name: frontend_prod
+  #   restart: always
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     - backend

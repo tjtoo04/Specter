@@ -1,0 +1,130 @@
+name: Global CD (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        required: true
+        type: string # 'frontend' or 'backend'
+      image_name:
+        required: true
+        type: string # Full image url
+      container_port:
+        required: true
+        type: string # 80 or 8000
+      host_port:
+        required: true
+        type: string # 3000 or 8000
+    secrets:
+      SSH_HOST:
+        required: true
+      SSH_USER:
+        required: true
+      SSH_KEY:
+        required: true
+      GH_TOKEN:
+        required: true
+
+jobs:
+  deploy-dashboard-vm:
+    runs-on: ubuntu-latest
+    steps:
+      # STEP 1: Normalize Inputs (Fixes the "Specter" vs "specter" case issue)
+      - name: Normalize Image Name
+        id: normalize
+        run: |
+          # Convert the input image name to strictly lowercase
+          LOWER_IMAGE=$(echo "${{ inputs.image_name }}" | tr '[:upper:]' '[:lower:]')
+          echo "image=$LOWER_IMAGE" >> $GITHUB_OUTPUT
+          echo "Normalized image: $LOWER_IMAGE"
+
+      # STEP 2: Deploy (SSH)
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          # We use the normalized image from Step 1
+          script: |
+            echo "--- STARTING DEPLOYMENT FOR ${{ inputs.service_name }} ---"
+            
+            # 1. Prepare Directory
+            mkdir -p ~/app
+            cd ~/app
+
+            # 2. Login to Registry
+            echo "${{ secrets.GH_TOKEN }}" | tr -d '\n' | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # 3. Update .env file
+            # We use the normalized lowercase image name here
+            VAR_NAME="${{ inputs.service_name }}_IMAGE"
+            NEW_VALUE="${{ steps.normalize.outputs.image }}"
+            
+            touch .env
+            if grep -q "$VAR_NAME=" .env; then
+              sed -i "s|$VAR_NAME=.*|$VAR_NAME=$NEW_VALUE|" .env
+            else
+              echo "$VAR_NAME=$NEW_VALUE" >> .env
+            fi
+            
+            docker network create global_network || true # Create network if not exists
+
+            # 4. Refresh docker-compose.yml
+            cat <<EOF > docker-compose.yml
+            services:
+              frontend:
+                image: \${frontend_IMAGE}
+                container_name: frontend_prod
+                restart: always
+                env_file: .env
+                # 'expose' is removed as it's not strictly necessary, 
+                # but the container is still accessible on 5173 internally.
+                networks:
+                  - global_network
+
+              backend:
+                image: \${backend_IMAGE}
+                container_name: backend_prod
+                restart: always
+                env_file: .env
+                # REMOVED 'ports' section to close the public side door.
+                # Nginx will still reach this via internal network on port 8000.
+                networks:
+                  - global_network
+
+            networks:
+              global_network:
+                external: true
+            EOF
+
+            # 5. Pull and Restart Service
+            docker compose pull ${{ inputs.service_name }}
+            docker compose up -d ${{ inputs.service_name }}
+            
+            # Cleanup old images
+            docker image prune -f
+
+      # STEP 3: Verify (SSH) - Fails pipeline if container is not running
+      - name: Verify Health
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            echo "--- VERIFYING ${{ inputs.service_name }} ---"
+            cd ~/app
+            
+            # Check strictly if the specific container is in 'running' state
+            CONTAINER_NAME="${{ inputs.service_name }}_prod"
+            STATUS=$(docker inspect -f '{{.State.Status}}' $CONTAINER_NAME 2>/dev/null || echo "not_found")
+            
+            if [ "$STATUS" == "running" ]; then
+              echo "✅ Success: $CONTAINER_NAME is running."
+              docker ps --filter "name=$CONTAINER_NAME"
+            else
+              echo "❌ Error: $CONTAINER_NAME is in state: $STATUS"
+              docker logs $CONTAINER_NAME | tail -n 20
+              exit 1
+            fi

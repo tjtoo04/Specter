@@ -1,73 +1,24 @@
-# React + TypeScript + Vite
+# Specter
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Mystery Shopper** – AI-powered autonomous testing agent for mobile signup flows: uses vision to navigate, detects bugs, diagnoses root cause, and alerts teams via Slack, Microsoft Teams, Discord, email, and Jira/Linear.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Repo layout
 
-## React Compiler
+| Path | Description |
+|------|-------------|
+| **[ai/](ai/)** | Mystery Shopper AI agent: alert routing (Slack, Teams, Discord, email, webhooks), issue models, run/verify scripts. See **[ai/README.md](ai/README.md)** for setup, `.env`, and usage. |
+| **[dashboard/](dashboard/)** | Web dashboard and backend (React + FastAPI). |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## Quick start – AI alerts
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. From repo root: `pip install -r ai/requirements.txt`
+2. Copy `ai/.env.example` to `ai/.env` and **set every variable** (all backends required). **`ai/.env` is gitignored**; never commit it.
+3. Dry run: `python -m ai.run_verify`
+4. Send to all backends: `python -m ai.run_verify --send`
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+See **[ai/README.md](ai/README.md)** for full docs.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
