@@ -1,0 +1,4 @@
+/cmd/specter/specter
+
+.env
+go.work.sum

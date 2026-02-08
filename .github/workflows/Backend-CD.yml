@@ -1,0 +1,53 @@
+name: Backend CD (Deploy Only)
+
+on:
+  workflow_call:
+
+jobs:
+  deploy-to-dashboard-vm:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. SSH into VM and do EVERYTHING (Create file + Run)
+      - name: Deploy on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST_DASHBOARD_VM }}
+          username: ${{ secrets.SSH_DASHBOARD_VM_USER }}
+          key: ${{ secrets.DASHBOARD_VM_SSH_KEY }}
+          script: |
+            # 1. Prepare Variables (Force Lowercase)
+            REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+            echo "Debug: Target Image -> ghcr.io/$REPO_NAME/backend:latest"
+
+            # 2. Prepare Directory (Clean slate)
+            mkdir -p ~/app
+            cd ~/app
+
+            # 3. GENERATE THE FILE DIRECTLY ON THE VM
+            # We use 'cat' to write the file content instantly. 
+            # Note: We use $REPO_NAME directly here, no need for export!
+            cat <<EOF > docker-compose.yml
+            services:
+              backend:
+                image: ghcr.io/$REPO_NAME/backend:latest
+                container_name: backend_prod
+                restart: always
+                ports:
+                  - "8000:8000"
+            EOF
+
+            # 4. Login to Registry
+            # using 'tr -d' ensures no hidden newline characters break the login
+            echo "${{ secrets.GITHUB_TOKEN }}" | tr -d '\n' | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # 5. Pull and Restart
+            docker compose pull
+            docker compose up -d --remove-orphans
+
+            # 6. Verify and Cleanup
+            echo "-----------------------------------"
+            docker ps
+            echo "-----------------------------------"
+            docker image prune -f

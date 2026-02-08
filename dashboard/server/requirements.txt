@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic[email]
+python-dotenv
+PyJWT[crypto]
+propelauth_fastapi
+SQLAlchemy
+aiosqlite

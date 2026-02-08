@@ -1,0 +1,23 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - "main" 
+    paths:
+      - "dashboard/**"  # Only triggers if files in 'dashboard' change
+  # Optional: Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  check-trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify Trigger
+        run: |
+          echo "✅ Success! A push to 'main' modified the 'dashboard' directory."
+          echo "The workflow triggered correctly."
+          ls -R dashboard/  # Optional: List files to prove we see them

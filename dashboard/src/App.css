@@ -1,0 +1,26 @@
+@font-face {
+  font-family: "FoundersGrotesk";
+  src: url("/fonts/AlrevoRegular-E47X9.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  font-family: "Lexend Deca", sans-serif;
+}
+
+.app-container {
+  height: 100dvh;
+  width: 100dvw;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem;
+  align-items: center;
+}
+
+.top-nav-bar {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+}
