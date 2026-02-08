@@ -3,7 +3,7 @@ from fastapi import FastAPI, BackgroundTasks, APIRouter
 
 from ..helpers.email import send_smtp_email
 
-from ..models.models import MagicLinkRequest
+from ..models.models import MagicLinkRequest, VerifyOtpRequest
 from ..auth import auth
 
 login_attempts = {}
@@ -27,20 +27,27 @@ def trigger_otp(request: MagicLinkRequest, background_tasks: BackgroundTasks):
 @router.get("/poll")
 def poll_status(email: str):
     attempt = login_attempts.get(email)
-    print(attempt)
+    print("getting the access token after successful otp", attempt)
     if not attempt:
         return {"status": "not_found"}
     return attempt
 
 
 @router.post("/verify-otp")
-def verify_otp(request: dict):
-    email = request.get("email")
-    otp = request.get("otp")
+def verify_otp(request: VerifyOtpRequest):
+    email = request.email
+    otp = request.otp
 
     if otp_store.get(email) == otp:
-        # Generate your actual API token here
-        token = "some-generated-session-token"
+        cli_user = auth.fetch_user_metadata_by_email(
+            email=request.email,
+            include_orgs=True,
+        )
+
+        if cli_user is None:
+            return {"message": "User not found in PropelAuth"}, 404
+
+        token = auth.create_access_token(cli_user.user_id, 999).access_token
         login_attempts[email] = {"status": "completed", "token": token}
         return {"message": "Verified"}
 

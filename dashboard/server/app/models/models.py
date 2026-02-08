@@ -1,6 +1,6 @@
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from sqlalchemy import Column, String, Table, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,6 +16,11 @@ user_projects = Table(
 
 class MagicLinkRequest(BaseModel):
     email: str
+
+
+class VerifyOtpRequest(BaseModel):
+    email: EmailStr
+    otp: str
 
 
 class Project(Base):
