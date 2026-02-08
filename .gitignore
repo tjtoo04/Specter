@@ -18,3 +18,11 @@ venv/
 # Logs and local
 *.log
 .DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+evidence/screenshots/
+
+.env
