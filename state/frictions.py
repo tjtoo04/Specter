@@ -1,35 +1,23 @@
 def detect_friction(state):
-     """
-     Detect if the agent is experiencing friction (stuck/confused)
+    """
+    Detect if the agent is experiencing friction (stuck/confused).
+    Returns (is_stuck: bool, friction_type: str | None)
+    """
 
-     Arguments:
-        state: dictinary from StateTacker.update()
+    # RULE 1: Too long on same screen
+    if state.get("time_on_screen", 0) > 15:
+        return True, "TIME_STUCK"
 
-    returns:
-        tuple: (is_stuck: bool, friction_type: str or None)
+    # RULE 2: Too many attempts on same screen
+    if state.get("attempts_on_screen", 0) >= 3:
+        return True, "REPEATED_ACTIONS"
 
-    Examples:
-        (True, "Time_STUCK")  - Agent stuck too long
-        (True, "Repeated_actions") - trying the same thing over and over
-        (False, None)               - Everything normal  
-    
-     """
+    # RULE 3: Screen loop
+    if state.get("screen_repeat_count", 0) >= 2:
+        return True, "SCREEN_LOOP"
 
-     #Rule 1 : Too long on same screen
-     if state["time_on_screen"] > 15:
-          return True, "Time_STUCK"
-     
-     #Rule 2: Too many attempts on same screen
-     if state ["attempts_on_screen"] >=3:
-          return True, "REPEATED_ACTIONS"
-     
-     #Rule 3: Seen this screen too many time (looping)
-     if state ["screen_repeat_count"] >= 2:
-          return True, "SCREEN_LOOP"
-     
-     #Rule 4: Action failed to execute
-     if not state ["action_succeeded"]:
-          return True, "Action_FAILED"
-     
-     #No friction detected
-     return False, None
+    # RULE 4: Action failed
+    if not state.get("action_succeeded", True):
+        return True, "ACTION_FAILED"
+
+    return False, None

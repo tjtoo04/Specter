@@ -3,98 +3,97 @@ from controller.actions import execute_action
 
 from agent.decision import decide_next_action
 from agent.vision import analyze_screen
-# from agent.diagnosis import diagnose   # ❌ COMMENTED (Gemini disabled)
 
 from state.tracker import StateTracker
 from state.frictions import detect_friction
 
-#from evidence.collector import package_evidence
-#1
-# from alerts.slack import send_alert
+
+MAX_STEPS = 15   # hard cap for demo
 
 
-MAX_STEPS = 15   # safety cap for demo
-
-
-def run_agent_loop(test_case):
-    print(f"\n Running test case: {test_case}")
+def run_agent_loop(test_case: str):
+    print(f"\n▶ Running test case: {test_case}")
 
     driver = get_driver()
     tracker = StateTracker()
 
-    execution_steps = []
     step_index = 0
 
-    while step_index < MAX_STEPS:
-        print(f"\n--- Loop step {step_index} ---")
+    try:
+        while step_index < MAX_STEPS:
+            print(f"\n--- Loop step {step_index} ---")
 
-        # STEP 4 — Decide intent (YOU)
-        intent = decide_next_action(test_case, step_index)
+            # STEP 1 — Decide next intent
+            intent = decide_next_action(test_case, step_index)
 
-        if intent is None:
-            print(" Flow completed normally.")
-            break
+            if intent is None:
+                print("✅ Flow completed normally.")
+                break
 
-        # STEP 5 — Execute action (Appium)
-        result = execute_action(driver, intent)
+            # STEP 2 — Execute action
+            result = execute_action(driver, intent)
 
-        # STEP 2A — Screenshot (still OK, cheap)
-        screenshot_path = f"evidence/screenshots/step_{step_index}.png"
-        driver.save_screenshot(screenshot_path)
+            # STEP 3 — Screenshot
+            screenshot_path = f"evidence/screenshots/step_{step_index}.png"
+            driver.save_screenshot(screenshot_path)
 
-        # STEP 2B — Vision (TEMP placeholder)
-        vision_output = analyze_screen(screenshot_path)
+            # STEP 4 — Vision
+            vision_output = analyze_screen(screenshot_path)
 
-        # STEP 3 — State update
-        state_snapshot = tracker.update(
-            vision_output=vision_output,
-            action_result=result
-        )
-        tracker.set_last_action(intent)
+            # STEP 5 — State update
+            state_snapshot = tracker.update(
+                vision_output=vision_output,
+                action_result=result
+            )
+            tracker.set_last_action(intent)
 
-        # STEP 7 — Friction detection
-        is_stuck, friction_type = detect_friction(state_snapshot)
-
-
-        execution_steps.append({
-            "step": step_index,
-            "intent": intent,
-            "action_result": result,
-            "vision": vision_output,
-            "state": state_snapshot,
-            "friction": friction_type
-        })
-
-        # STEP 8 — Diagnosis (❌ Gemini skipped)
-        if is_stuck:
-            print("⚠️ Friction detected:", friction_type)
-
-            # 🔒 TEMP MOCK DIAGNOSIS (SAFE)
-            diagnosis = {
-                "issue_type": "UX Friction",
-                "severity": "P2",
-                "root_cause": f"Friction detected: {friction_type}",
-                "suggested_team": "Frontend"
+            # 🔒 NORMALISE STATE KEYS (match detect_friction expectations)
+            state_snapshot = {
+            "current_screen_id": state_snapshot.get("Current_screen_id"),
+            "time_on_screen": state_snapshot.get("time_on_Screen", 0),
+            "attempts_on_screen": state_snapshot.get("Attempts_on_screen", 0),
+            "screen_repeat_count": state_snapshot.get("Screen_repeat_count", 0),
+            "history": state_snapshot.get("history", []),
+            "action_succeeded": state_snapshot.get("action_succeeded", False),
+            
             }
 
-            payload = {
-                "test_case": test_case,
-                "execution": execution_steps,
-                "diagnosis": diagnosis
-            }
 
-            # STEP 9 — Evidence (CINDY)
-            package_evidence(payload)
+            
 
-            # STEP 10 — Alert (CINDY)
-            send_alert(payload)
+            print("State snapshot:", state_snapshot)
 
-            break
+            # STEP 6 — Friction detection
+            is_stuck, friction_type = detect_friction(state_snapshot)
 
-        step_index += 1
+            # STEP 7 — If friction detected → PRINT + STOP
+            if is_stuck:
+                print("\n⚠️ FRICTION DETECTED")
+                print("Type:", friction_type)
 
-    driver.quit()
-    print(" Agent loop finished.\n")
+                diagnosis = {
+                    "issue_type": "UX Friction",
+                    "severity": "P2",
+                    "root_cause": f"Detected friction: {friction_type}",
+                    "suggested_team": "Frontend",
+                }
+
+                print("\n🧠 DIAGNOSIS")
+                for k, v in diagnosis.items():
+                    print(f"{k}: {v}")
+
+                print("\n🛑 Agent stopping after detecting issue.")
+                break
+
+            step_index += 1
+
+        else:
+            print("\n⏹ Max steps reached without friction.")
+
+    finally:
+        driver.quit()
+        print("\n🧹 Driver closed.")
+        print("🏁 Agent loop finished.\n")
 
 
 # -------------------------
@@ -118,7 +117,7 @@ Select test case:
     }
 
     if choice not in TEST_CASES:
-        print(" Invalid choice")
+        print("❌ Invalid choice")
         exit(1)
 
     run_agent_loop(TEST_CASES[choice])
