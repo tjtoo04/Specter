@@ -85,4 +85,61 @@ export const api = (accessToken: string) => ({
         fetchWithAuth(`/api/configs/${configId}`, {
             method: 'DELETE',
         }, accessToken),
+
+    getReports: async () =>
+        fetchWithAuth('/api/reports', {
+            method: 'GET',
+        }, accessToken),
+
+    uploadReport: async (file: File) => {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const baseUrl = configs.backendUrl
+        return fetch(`${baseUrl}/api/reports/`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+            },
+            body: formData,
+        }).then(res => {
+            if (!res.ok) throw new Error(`API Error: ${res.statusText}`)
+            return res.json()
+        })
+    },
+
+    downloadReport: async (reportId: number) => {
+        const baseUrl = configs.backendUrl
+        return fetch(`${baseUrl}/api/reports/${reportId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+            },
+        }).then(res => {
+            if (!res.ok) throw new Error(`API Error: ${res.statusText}`)
+            return res.blob()
+        })
+    },
+
+    updateReport: async (reportId: number, file: File) => {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const baseUrl = configs.backendUrl
+        return fetch(`${baseUrl}/api/reports/${reportId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+            },
+            body: formData,
+        }).then(res => {
+            if (!res.ok) throw new Error(`API Error: ${res.statusText}`)
+            return res.json()
+        })
+    },
+
+    deleteReport: async (reportId: number) =>
+        fetchWithAuth(`/api/reports/${reportId}`, {
+            method: 'DELETE',
+        }, accessToken),
 });

@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 from .database import Base, engine
-from .routes import configurations, users, projects, auth
+from .routes import configurations, users, projects, auth, reports
 
 
 mode = os.getenv("VITE_APP_MODE")
@@ -51,3 +51,4 @@ app.include_router(configurations.router)
 app.include_router(users.router)
 app.include_router(projects.router)
 app.include_router(auth.router)
+app.include_router(reports.router)
